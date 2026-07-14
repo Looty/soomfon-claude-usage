@@ -1,0 +1,10 @@
+{
+  "name": "soomfon-claude-usage-plugin",
+  "version": "1.0.0",
+  "private": true,
+  "description": "StreamDock plugin backend: renders Claude Code rate-limit usage onto the key image.",
+  "main": "index.js",
+  "dependencies": {
+    "ws": "^8.21.0"
+  }
+}

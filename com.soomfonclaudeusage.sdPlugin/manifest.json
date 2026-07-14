@@ -1,0 +1,30 @@
+{
+  "Actions": [
+    {
+      "Icon": "images/icon",
+      "Name": "Claude Usage",
+      "States": [
+        { "Image": "images/icon" }
+      ],
+      "Controllers": ["Keypad", "Information"],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": false,
+      "Tooltip": "Rotates: 5h left %, 7d left %, reset countdown. Press to advance manually.",
+      "UUID": "com.soomfonclaudeusage.weekly"
+    }
+  ],
+  "SDKVersion": 1,
+  "Author": "soomfon-claude-usage contributors",
+  "Name": "Claude Usage",
+  "Icon": "images/icon",
+  "CategoryIcon": "images/icon",
+  "Category": "Claude Usage",
+  "Description": "Shows Claude Code usage/spend on a button",
+  "CodePathWin": "plugin/index.js",
+  "Nodejs": { "Version": "20" },
+  "Version": "1.0.0",
+  "OS": [
+    { "Platform": "windows", "MinimumVersion": "7" }
+  ],
+  "Software": { "MinimumVersion": "2.9" }
+}
