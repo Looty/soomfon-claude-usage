@@ -16,8 +16,19 @@ function cache() {
   return JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'));
 }
 
+// The cache is only rewritten when Claude Code itself renders its statusline
+// (i.e. during an active session) — it never refreshes on its own. Past this
+// age, treat its numbers as a last-known snapshot rather than live data, and
+// say so instead of quietly showing a number that may be well out of date.
+const STALE_AFTER_SEC = 15 * 60;
+
+function isStale(c) {
+  const gen = Number(c.generatedAt);
+  if (!Number.isFinite(gen)) return true;
+  return Math.floor(Date.now() / 1000) - gen > STALE_AFTER_SEC;
+}
+
 function formatCountdown(seconds) {
-  if (!Number.isFinite(seconds) || seconds <= 0) return 'now';
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
@@ -27,17 +38,19 @@ const SLIDES = [
   {
     label: '5H LEFT',
     value() {
-      const pct = Number(cache().fiveHourLeftPct);
+      const c = cache();
+      const pct = Number(c.fiveHourLeftPct);
       if (!Number.isFinite(pct)) throw new Error('no fiveHourLeftPct');
-      return `${pct.toFixed(0)}%`;
+      return `${pct.toFixed(0)}%${isStale(c) ? '*' : ''}`;
     },
   },
   {
     label: '7D LEFT',
     value() {
-      const pct = Number(cache().sevenDayLeftPct);
+      const c = cache();
+      const pct = Number(c.sevenDayLeftPct);
       if (!Number.isFinite(pct)) throw new Error('no sevenDayLeftPct');
-      return `${pct.toFixed(0)}%`;
+      return `${pct.toFixed(0)}%${isStale(c) ? '*' : ''}`;
     },
   },
   {
@@ -49,7 +62,9 @@ const SLIDES = [
         .filter(Number.isFinite);
       if (!candidates.length) throw new Error('no reset timestamps');
       const soonest = Math.min(...candidates);
-      return formatCountdown(soonest - Math.floor(Date.now() / 1000));
+      const secs = soonest - Math.floor(Date.now() / 1000);
+      if (secs <= 0) return isStale(c) ? 'stale' : 'now';
+      return formatCountdown(secs);
     },
   },
 ];
