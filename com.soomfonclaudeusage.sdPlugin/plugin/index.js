@@ -40,7 +40,7 @@ const SLIDES = [
     value() {
       const c = cache();
       const pct = Number(c.fiveHourLeftPct);
-      if (!Number.isFinite(pct)) throw new Error('no fiveHourLeftPct');
+      if (c.fiveHourLeftPct === null || !Number.isFinite(pct)) throw new Error('no fiveHourLeftPct');
       return `${pct.toFixed(0)}%${isStale(c) ? '*' : ''}`;
     },
   },
@@ -49,7 +49,7 @@ const SLIDES = [
     value() {
       const c = cache();
       const pct = Number(c.sevenDayLeftPct);
-      if (!Number.isFinite(pct)) throw new Error('no sevenDayLeftPct');
+      if (c.sevenDayLeftPct === null || !Number.isFinite(pct)) throw new Error('no sevenDayLeftPct');
       return `${pct.toFixed(0)}%${isStale(c) ? '*' : ''}`;
     },
   },
