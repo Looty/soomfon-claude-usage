@@ -22,11 +22,22 @@ $valueBrush = [System.Drawing.Brushes]::White
 $fmt = New-Object System.Drawing.StringFormat
 $fmt.Alignment = [System.Drawing.StringAlignment]::Center
 $fmt.LineAlignment = [System.Drawing.StringAlignment]::Center
+# Never wrap: a too-wide value (e.g. "100%" at 36pt) would otherwise push its
+# tail onto a second line that falls outside the band and silently vanishes.
+$fmt.FormatFlags = [System.Drawing.StringFormatFlags]::NoWrap
 
 # Headroom band above the mascot — matches where the reference image left clear space.
 $bandH = $bmp.Height * 0.46
 $labelBand = New-Object System.Drawing.RectangleF 0, ($bandH * 0.06), $bmp.Width, ($bandH * 0.34)
 $valueBand = New-Object System.Drawing.RectangleF 0, ($bandH * 0.36), $bmp.Width, ($bandH * 0.64)
+
+# The length-based size is only a first guess; shrink until it actually fits.
+$maxW = $bmp.Width * 0.92
+while ($valueFontSize -gt 10 -and $g.MeasureString($Value, $valueFont).Width -gt $maxW) {
+  $valueFont.Dispose()
+  $valueFontSize -= 2
+  $valueFont = New-Object System.Drawing.Font("Segoe UI", $valueFontSize, [System.Drawing.FontStyle]::Bold)
+}
 
 $g.DrawString($Label, $labelFont, $labelBrush, $labelBand, $fmt)
 $g.DrawString($Value, $valueFont, $valueBrush, $valueBand, $fmt)
