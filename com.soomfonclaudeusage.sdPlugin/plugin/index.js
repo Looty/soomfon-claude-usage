@@ -34,37 +34,38 @@ function formatCountdown(seconds) {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
+// A snapshot taken before its window's reset time says nothing about the new
+// window — whatever was used then has been wiped, so the window is known to be
+// full again. Report that (confidently, no '*') instead of the old number.
+function leftPct(c, pctKey, resetKey) {
+  const pct = Number(c[pctKey]);
+  if (c[pctKey] === null || !Number.isFinite(pct)) throw new Error('no ' + pctKey);
+  const resetsAt = Number(c[resetKey]);
+  if (Number.isFinite(resetsAt) && Math.floor(Date.now() / 1000) >= resetsAt) return '100%';
+  return `${pct.toFixed(0)}%${isStale(c) ? '*' : ''}`;
+}
+
 const SLIDES = [
   {
     label: '5H LEFT',
-    value() {
-      const c = cache();
-      const pct = Number(c.fiveHourLeftPct);
-      if (c.fiveHourLeftPct === null || !Number.isFinite(pct)) throw new Error('no fiveHourLeftPct');
-      return `${pct.toFixed(0)}%${isStale(c) ? '*' : ''}`;
-    },
+    value: () => leftPct(cache(), 'fiveHourLeftPct', 'fiveHourResetsAt'),
   },
   {
     label: '7D LEFT',
-    value() {
-      const c = cache();
-      const pct = Number(c.sevenDayLeftPct);
-      if (c.sevenDayLeftPct === null || !Number.isFinite(pct)) throw new Error('no sevenDayLeftPct');
-      return `${pct.toFixed(0)}%${isStale(c) ? '*' : ''}`;
-    },
+    value: () => leftPct(cache(), 'sevenDayLeftPct', 'sevenDayResetsAt'),
   },
   {
     label: 'RESET IN',
     value() {
       const c = cache();
-      const candidates = [c.fiveHourResetsAt, c.sevenDayResetsAt]
+      const now = Math.floor(Date.now() / 1000);
+      // Resets already in the past are over; a new 5h window only starts on
+      // next use, so its reset time isn't known until Claude Code reports it.
+      const upcoming = [c.fiveHourResetsAt, c.sevenDayResetsAt]
         .map(Number)
-        .filter(Number.isFinite);
-      if (!candidates.length) throw new Error('no reset timestamps');
-      const soonest = Math.min(...candidates);
-      const secs = soonest - Math.floor(Date.now() / 1000);
-      if (secs <= 0) return isStale(c) ? 'stale' : 'now';
-      return formatCountdown(secs);
+        .filter((t) => Number.isFinite(t) && t > now);
+      if (!upcoming.length) return 'idle';
+      return formatCountdown(Math.min(...upcoming) - now);
     },
   },
 ];
@@ -95,7 +96,11 @@ const plugin = new Plugins();
 const contexts = new Set();
 let slideIndex = 0;
 let rotateTimer = null;
+let lastDataUrl = null;
+let lastShown = null; // label|value currently on the key(s)
 
+// Cheap to call often: it re-reads the (tiny) cache every time but only
+// spawns the PowerShell renderer when the text to show actually changed.
 function renderCurrentSlide() {
   const slide = SLIDES[slideIndex];
   let value;
@@ -104,15 +109,24 @@ function renderCurrentSlide() {
   } catch {
     value = 'n/a';
   }
-  let dataUrl;
+  const shown = `${slide.label}|${value}`;
+  if (shown === lastShown) return;
   try {
-    dataUrl = renderImage(slide.label, value);
+    lastDataUrl = renderImage(slide.label, value);
   } catch (err) {
     log('renderCurrentSlide: ' + err.message);
     return; // leave whatever image is already showing rather than guess
   }
-  for (const context of contexts) plugin.setImage(context, dataUrl);
+  lastShown = shown;
+  for (const context of contexts) plugin.setImage(context, lastDataUrl);
 }
+
+// The statusline rewrites the cache every few seconds while Claude Code is
+// open, but nothing tells us when — so poll. Without this the key only
+// refreshed on the 5-minute rotation and could sit on a stale value from
+// before the session started for up to 15 minutes.
+const REFRESH_MS = 5_000;
+setInterval(renderCurrentSlide, REFRESH_MS);
 
 function startRotation() {
   if (rotateTimer) clearInterval(rotateTimer);
@@ -131,6 +145,9 @@ function advanceManually() {
 plugin.weekly = new Actions({
   _willAppear({ context }) {
     contexts.add(context);
+    // A newly appearing key (page switch, app restart) has no image yet even
+    // if the text hasn't changed, so hand it the last render directly.
+    if (lastDataUrl) plugin.setImage(context, lastDataUrl);
     renderCurrentSlide();
     startRotation();
   },

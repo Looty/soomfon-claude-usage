@@ -95,6 +95,11 @@ it up via:
 
 - The key auto-rotates between slides every 5 minutes.
 - Press the key to jump to the next slide immediately.
+- The values refresh within ~5 seconds of Claude Code writing new data.
+- A trailing `*` means the numbers are more than 15 minutes old (no Claude Code
+  session has updated them). Once a window's reset time has passed, that window
+  shows `100%`, since it has been refilled, and the countdown shows `idle` when
+  no reset is scheduled.
 - If a value ever shows `n/a`, check `com.soomfonclaudeusage.sdPlugin/log.txt`
   (created next to the plugin on first error) — it logs any render or
   websocket failures.
