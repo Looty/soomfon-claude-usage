@@ -1,4 +1,4 @@
 node_modules/
 log.txt
-images/rendered.png
+**/images/rendered.png
 *.log
